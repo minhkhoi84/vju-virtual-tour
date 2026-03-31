@@ -5,7 +5,13 @@ const LATEST_LIMIT = 20;
 
 export async function createFeedback(req, res) {
   try {
-    const { rating, comment = '' } = req.body ?? {};
+    const { sceneId, rating, comment = '' } = req.body ?? {};
+
+    // Thêm block validate sceneId
+    if (!sceneId || !mongoose.Types.ObjectId.isValid(sceneId)) {
+      return res.status(400).json({ message: 'Valid sceneId is required' });
+    }
+    
     if (rating === undefined || rating === null) {
       return res.status(400).json({ message: 'rating is required (1-5)' });
     }
@@ -16,7 +22,7 @@ export async function createFeedback(req, res) {
     if (typeof comment !== 'string' || comment.length > 200) {
       return res.status(400).json({ message: 'comment must be a string with at most 200 characters' });
     }
-    const doc = await Feedback.create({ rating: r, comment: comment.trim() });
+    const doc = await Feedback.create({ sceneId, rating: r, comment: comment.trim() });
     res.status(201).json(doc);
   } catch (err) {
     res.status(400).json({ message: 'Failed to create feedback', error: err.message });
