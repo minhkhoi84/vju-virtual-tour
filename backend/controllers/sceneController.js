@@ -1,24 +1,76 @@
-const Scene = require('../models/Scene');
+import mongoose from 'mongoose';
+import Scene from '../models/Scene.js';
 
-// Lấy danh sách toàn bộ các cảnh (Dùng cho frontend gọi ra hiển thị)
-const getAllScenes = async (req, res) => {
+function isValidId(id) {
+  return mongoose.Types.ObjectId.isValid(id);
+}
+
+export async function getAllScenes(req, res) {
   try {
-    const scenes = await Scene.find();
-    res.status(200).json(scenes);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi khi lấy dữ liệu', error });
+    const scenes = await Scene.find().sort({ createdAt: -1 });
+    res.json(scenes);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to list scenes', error: err.message });
   }
-};
+}
 
-// Thêm một cảnh 360 mới vào Database
-const createScene = async (req, res) => {
+export async function getSceneById(req, res) {
   try {
-    const newScene = new Scene(req.body);
-    const savedScene = await newScene.save();
-    res.status(201).json(savedScene);
-  } catch (error) {
-    res.status(400).json({ message: 'Lỗi khi tạo cảnh mới', error });
+    const { id } = req.params;
+    if (!isValidId(id)) {
+      return res.status(400).json({ message: 'Invalid scene id' });
+    }
+    const scene = await Scene.findById(id);
+    if (!scene) {
+      return res.status(404).json({ message: 'Scene not found' });
+    }
+    res.json(scene);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to get scene', error: err.message });
   }
-};
+}
 
-module.exports = { getAllScenes, createScene };
+export async function createScene(req, res) {
+  try {
+    const scene = new Scene(req.body);
+    await scene.save();
+    res.status(201).json(scene);
+  } catch (err) {
+    res.status(400).json({ message: 'Failed to create scene', error: err.message });
+  }
+}
+
+export async function updateScene(req, res) {
+  try {
+    const { id } = req.params;
+    if (!isValidId(id)) {
+      return res.status(400).json({ message: 'Invalid scene id' });
+    }
+    const scene = await Scene.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!scene) {
+      return res.status(404).json({ message: 'Scene not found' });
+    }
+    res.json(scene);
+  } catch (err) {
+    res.status(400).json({ message: 'Failed to update scene', error: err.message });
+  }
+}
+
+export async function deleteScene(req, res) {
+  try {
+    const { id } = req.params;
+    if (!isValidId(id)) {
+      return res.status(400).json({ message: 'Invalid scene id' });
+    }
+    const scene = await Scene.findByIdAndDelete(id);
+    if (!scene) {
+      return res.status(404).json({ message: 'Scene not found' });
+    }
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete scene', error: err.message });
+  }
+}

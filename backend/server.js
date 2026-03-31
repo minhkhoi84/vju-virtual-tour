@@ -1,30 +1,33 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-require('dotenv').config();
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import { connectDB } from './config/db.js';
+import sceneRoutes from './routes/sceneRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
+import feedbackRoutes from './routes/feedbackRoutes.js';
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Khai báo Routes
-const sceneRoutes = require('./routes/sceneRoutes');
-app.use('/api/scenes', sceneRoutes);
-
-// Kết nối MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ Đã kết nối thành công với MongoDB'))
-  .catch((err) => console.error('❌ Lỗi kết nối MongoDB:', err));
-
-// Route test cơ bản
 app.get('/', (req, res) => {
-  res.send('VJU Virtual Tour API đang chạy!');
+  res.json({ message: 'VJU Virtual Tour API' });
 });
 
-// Khởi chạy server
+app.use('/api/scenes', sceneRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/feedback', feedbackRoutes);
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
-});
+
+try {
+  await connectDB();
+  console.log('Connected to MongoDB');
+  app.listen(PORT, () => {
+    console.log(`Server listening on http://localhost:${PORT}`);
+  });
+} catch (err) {
+  console.error('MongoDB connection failed:', err);
+  process.exit(1);
+}

@@ -1,11 +1,19 @@
-const express = require('express');
-const router = express.Router();
-const { getAllScenes, createScene } = require('../controllers/sceneController');
+import { Router } from 'express';
+import { requireAdmin } from '../middlewares/admin.js';
+import {
+  getAllScenes,
+  getSceneById,
+  createScene,
+  updateScene,
+  deleteScene,
+} from '../controllers/sceneController.js';
 
-// GET: Lấy danh sách scene
+const router = Router();
+
 router.get('/', getAllScenes);
+router.get('/:id', getSceneById);
+router.post('/', requireAdmin, createScene);
+router.put('/:id', requireAdmin, updateScene);
+router.delete('/:id', requireAdmin, deleteScene);
 
-// POST: Thêm scene mới
-router.post('/', createScene);
-
-module.exports = router;
+export default router;

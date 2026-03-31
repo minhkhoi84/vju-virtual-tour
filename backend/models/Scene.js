@@ -1,34 +1,14 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
-const sceneSchema = new mongoose.Schema({
-  sceneId: {
-    type: String,
-    required: true,
-    unique: true,
-    // Ví dụ: 'cong_chinh', 'thu_vien' (dùng để map với tool 360 sau này)
+const sceneSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true },
+    description: { type: String, default: '', trim: true },
+    image360Url: { type: String, required: true, trim: true },
+    thumbnail: { type: String, default: '', trim: true },
+    views: { type: Number, default: 0, min: 0 },
   },
-  title: {
-    type: String,
-    required: true,
-    // Ví dụ: 'Cổng chính Cơ sở Mỹ Đình'
-  },
-  description: {
-    type: String,
-    // Mô tả ngắn gọn về khu vực này
-  },
-  panoramaUrl: {
-    type: String,
-    // Link dẫn đến file ảnh 360 gốc nếu cần thiết
-  },
-  hotspots: [
-    {
-      pitch: Number, // Tọa độ dọc
-      yaw: Number,   // Tọa độ ngang
-      type: String,  // Loại hotspot (ví dụ: 'info' để hiện thông tin, 'link' để chuyển cảnh)
-      targetSceneId: String, // Nếu là link thì sẽ chuyển đến scene nào
-      text: String   // Nội dung hiển thị khi hover/click
-    }
-  ]
-}, { timestamps: true });
+  { timestamps: true }
+);
 
-module.exports = mongoose.model('Scene', sceneSchema);
+export default mongoose.model('Scene', sceneSchema);
