@@ -13,11 +13,12 @@ const MENU_DATA = [
   {
     category: "KHU TIỆN ÍCH",
     items: [
-      { label: "Nhà đa năng", index: 30 },
-      { label: "Sân bóng", index: 31 },
+      { label: "Nhà đa năng", index: 29 },
+      { label: "Sân bóng", index: 30 },
       { label: "Thư viện", index: 20},
       { label: "Khu căng tin", index: 10 },
-      { label: "Khu ký túc xá (DOM A, B, C)", index: 60 },
+      { label: "Khu ký túc xá", index: 60 },
+      { label: "Phòng giặt là", index: 61 },
       { label: "Hội trường", index: 2 },
       { label: "Máy ATM", index: 13 },
       { label: "Tạp hóa", index: 31 },
@@ -92,9 +93,8 @@ const MENU_DATA = [
         },
       ],
     },
-    { label: "Tầng 1–2 khu căng tin", index: 18 },
-    { label: "Rmit Hub Innovation", index: 19 },
-    { label: "Phòng máy", index: 20 },
+    { label: "Rmit Hub Innovation", index: 12 },
+    { label: "Phòng máy", index: 15 },
   ]
 },
   {
@@ -102,7 +102,7 @@ const MENU_DATA = [
     items: [
       { label: "Phòng Đào tạo & CTSV", index: 21 },
       { label: "Phòng nghỉ giáo viên", index: 53 },
-      { label: "Phòng máy chủ / Phòng kho", index: 23 },
+      { label: "Phòng máy chủ / Phòng kho", index: 34 },
     ]
   }
 ];
@@ -134,6 +134,7 @@ export default function TourPage() {
   const iframeRef = useRef(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [language, setLanguage] = useState("VI");
   const allMenuItems = MENU_DATA.flatMap((group) => group.items);
   const activeLectureHall = MENU_DATA
     .find((group) => group.category === "HỆ THỐNG PHÒNG HỌC")
@@ -192,7 +193,7 @@ export default function TourPage() {
             }
           }
         }
-      } catch (error) {
+      } catch {
         // Bỏ qua lỗi nếu Iframe chưa load hoặc không có hàm này
       }
     }, 150);
@@ -202,6 +203,37 @@ export default function TourPage() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-black font-sans">
+      <div className="absolute right-4 top-4 z-[70] flex items-center gap-4">
+        <a
+          href="https://vju.ac.vn/ttts2026/"
+          target="_blank"
+          rel="noreferrer"
+          className="hidden rounded-md bg-[#f26622] px-4 py-2 text-sm font-bold text-white transition-transform hover:scale-105 md:block"
+        >
+          Thông tin tuyển sinh
+        </a>
+
+        <div className="flex items-center divide-x divide-white/20 overflow-hidden rounded-md bg-black/40 backdrop-blur-md">
+          <button
+            type="button"
+            onClick={() => setLanguage("VI")}
+            className={`px-3 py-2 text-sm font-bold transition-colors ${
+              language === "VI" ? "text-white" : "text-gray-400"
+            }`}
+          >
+            VI
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanguage("EN")}
+            className={`px-3 py-2 text-sm font-bold transition-colors ${
+              language === "EN" ? "text-white" : "text-gray-400"
+            }`}
+          >
+            EN
+          </button>
+        </div>
+      </div>
       
       {/* Nút Toggle mở menu */}
       {!isSidebarOpen && (
@@ -221,7 +253,7 @@ export default function TourPage() {
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-[96px] shrink-0 items-center gap-3 border-b border-white/50 bg-white/80 px-4 backdrop-blur-md">
+        <div className="flex h-[96px] shrink-0 items-center gap-3 border-b border-white/50 bg-white px-4">
           <button
             onClick={() => setIsSidebarOpen(false)}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f26622] text-white transition-colors hover:bg-[#d9581a]"
@@ -230,15 +262,13 @@ export default function TourPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-
-          <div className="min-w-0">
-            <h1 className="truncate text-[22px] font-black uppercase leading-none tracking-tight text-[#1e294d]">
-              VJU VIRTUAL TOUR
-            </h1>
-            <p className="mt-1 text-[13px] font-normal text-slate-500">
-              Hiện thực hóa tiềm năng
-            </p>
-          </div>
+        <div className="min-w-0 flex items-center overflow-hidden">
+          <img 
+            src="/imgs/logo.jpg" 
+            alt="VJU Logo"
+            className="h-auto max-h-[75px] w-[200px] object-contain ml-4 transition-all"
+          />
+        </div>
         </div>
 
         <div className="relative flex-1 overflow-hidden bg-white/70 backdrop-blur-md">
