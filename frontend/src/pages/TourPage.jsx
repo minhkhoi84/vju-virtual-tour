@@ -4,34 +4,33 @@ const MENU_DATA = [
   {
     category: "KHUÔN VIÊN TRƯỜNG",
     items: [
-      { label: "Cổng soát vé", index: 0 },
-      { label: "Khuôn viên trường", index: 1 },
-      { label: "Bãi đất trống", index: 2 },
-      { label: "Nhà để xe", index: 3 },
+      { label: "Cổng trường", index: 0 },
+      { label: "Cổng soát vé", index: 1 },
+      { label: "Sân chào cờ", index: 5 },
+      { label: "Nhà để xe", index: 6 },
     ]
   },
   {
     category: "KHU TIỆN ÍCH",
     items: [
-      { label: "Nhà đa năng", index: 4 },
-      { label: "Sân bóng", index: 5 },
-      { label: "Trung tâm thư viện", index: 6 },
-      { label: "Khu căng tin", index: 7 },
-      { label: "Khu ký túc xá (DOM A, B, C)", index: 8 },
-      { label: "Quảng trường", index: 9 },
-      { label: "Hội trường", index: 10 },
-      { label: "Máy ATM", index: 11 },
-      { label: "Tạp hóa", index: 12 },
-      { label: "Hàng photo", index: 13 },
-      { label: "Nhà CLB", index: 14 },
+      { label: "Nhà đa năng", index: 30 },
+      { label: "Sân bóng", index: 31 },
+      { label: "Thư viện", index: 20},
+      { label: "Khu căng tin", index: 10 },
+      { label: "Khu ký túc xá (DOM A, B, C)", index: 60 },
+      { label: "Hội trường", index: 2 },
+      { label: "Máy ATM", index: 13 },
+      { label: "Tạp hóa", index: 31 },
+      { label: "Nhà CLB", index: 36 },
     ]
   },
   {
     category: "HỆ THỐNG PHÒNG HỌC",
     items: [
-      { label: "Phòng thí nghiệm / Thực hành", index: 15 },
-      { label: "Giảng đường 1 (1101–1303)", index: 16 },
-      { label: "Giảng đường 2 (2101–2303)", index: 17 },
+      { label: "Phòng thí nghiệm / Thực hành", index: 19 },
+      { label: "Giảng đường 1", index: 16 },
+      { label: "Giảng đường 2", index: 17 },
+      { label: "Giảng đường 3", index: 62 },
       { label: "Tầng 1–2 khu căng tin", index: 18 },
       { label: "Rmit Hub Innovation", index: 19 },
       { label: "Phòng máy", index: 20 },
@@ -41,7 +40,7 @@ const MENU_DATA = [
     category: "KHU VỰC HÀNH CHÍNH / NHÀ HIỆU BỘ",
     items: [
       { label: "Phòng Đào tạo & CTSV", index: 21 },
-      { label: "Phòng nghỉ giáo viên", index: 22 },
+      { label: "Phòng nghỉ giáo viên", index: 53 },
       { label: "Phòng máy chủ / Phòng kho", index: 23 },
     ]
   }
@@ -73,7 +72,7 @@ const GROUP_ICONS = {
 export default function TourPage() {
   const iframeRef = useRef(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activeIndex, setActiveIndex] = useState(1);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [openGroups, setOpenGroups] = useState(() =>
     MENU_DATA.reduce((acc, group) => {
       acc[group.category] = group.category === "KHUÔN VIÊN TRƯỜNG";
