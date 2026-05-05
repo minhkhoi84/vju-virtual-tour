@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 const MENU_DATA = [
   {
@@ -24,18 +24,79 @@ const MENU_DATA = [
       { label: "Nhà CLB", index: 36 },
     ]
   },
-  {
-    category: "HỆ THỐNG PHÒNG HỌC",
-    items: [
-      { label: "Phòng thí nghiệm / Thực hành", index: 19 },
-      { label: "Giảng đường 1", index: 16 },
-      { label: "Giảng đường 2", index: 17 },
-      { label: "Giảng đường 3", index: 62 },
-      { label: "Tầng 1–2 khu căng tin", index: 18 },
-      { label: "Rmit Hub Innovation", index: 19 },
-      { label: "Phòng máy", index: 20 },
-    ]
-  },
+  // Tìm đến phần Hệ thống phòng học và thay thế bằng đoạn này:
+{
+  category: "HỆ THỐNG PHÒNG HỌC",
+  items: [
+    { label: "Phòng thí nghiệm / Thực hành", index: 19 },
+    {
+      label: "Giảng đường 1",
+      index: 50,
+      subItems: [
+        {
+          label: "Phòng 2101",
+          index: 50,
+          thumb: "/tour360/media/panorama_E0C3819C_F74C_F609_41C2_2EFFF4FB156F_t.jpg",
+        },
+        {
+          label: "Phòng 2101 (góc 2)",
+          index: 51,
+          thumb: "/tour360/media/panorama_E0B380A8_F74C_7609_41A7_28154E1CB0FC_t.jpg",
+        },
+      ],
+    },
+    {
+      label: "Giảng đường 2",
+      index: 4,
+      subItems: [
+        {
+          label: "Phòng 2301",
+          index: 57,
+          thumb: "/tour360/media/panorama_D3638364_F73B_F17C_41C7_53EA7B2F932B_t.jpg",
+        },
+        {
+          label: "Phòng 2302",
+          index: 58,
+          thumb: "/tour360/media/panorama_D2503D71_F73C_7155_41CF_7ED250A076A7_t.jpg",
+        },
+        {
+          label: "Phòng 2303",
+          index: 59,
+          thumb: "/tour360/media/panorama_D28F14CA_F73C_37B7_41EC_9A23F9063271_t.jpg",
+        },
+      ],
+    },
+    {
+      label: "Giảng đường 3",
+      index: 46,
+      subItems: [
+        {
+          label: "Phòng 3101",
+          index: 46,
+          thumb: "/tour360/media/panorama_F954B244_F73C_7A79_41E5_028FB682D8D8_t.jpg",
+        },
+        {
+          label: "Phòng 3102",
+          index: 47,
+          thumb: "/tour360/media/panorama_E51A99B3_F734_561F_41D1_8A77F27BEF80_t.jpg",
+        },
+        {
+          label: "Phòng 3103",
+          index: 48,
+          thumb: "/tour360/media/panorama_E5ED6832_F74C_7619_41BB_0B82F2BCBFB6_t.jpg",
+        },
+        {
+          label: "Phòng 3104",
+          index: 49,
+          thumb: "/tour360/media/panorama_E3E47DCE_F75C_2E09_41ED_FE30EFBA56CA_t.jpg",
+        },
+      ],
+    },
+    { label: "Tầng 1–2 khu căng tin", index: 18 },
+    { label: "Rmit Hub Innovation", index: 19 },
+    { label: "Phòng máy", index: 20 },
+  ]
+},
   {
     category: "KHU VỰC HÀNH CHÍNH / NHÀ HIỆU BỘ",
     items: [
@@ -73,6 +134,19 @@ export default function TourPage() {
   const iframeRef = useRef(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+  const allMenuItems = MENU_DATA.flatMap((group) => group.items);
+  const activeLectureHall = MENU_DATA
+    .find((group) => group.category === "HỆ THỐNG PHÒNG HỌC")
+    ?.items.find(
+      (item) =>
+        item.subItems?.length &&
+        item.subItems.some((subItem) => subItem.index === activeIndex)
+    );
+  const thumbnailItems = activeLectureHall?.subItems ?? [];
+  const activeThumbnailIndex = thumbnailItems.some((item) => item.index === activeIndex)
+    ? activeIndex
+    : thumbnailItems[0]?.index;
+  const isThumbnailOpen = thumbnailItems.length > 0;
   const [openGroups, setOpenGroups] = useState(() =>
     MENU_DATA.reduce((acc, group) => {
       acc[group.category] = group.category === "KHUÔN VIÊN TRƯỜNG";
@@ -93,6 +167,38 @@ export default function TourPage() {
       [category]: !prev[category],
     }));
   };
+
+  // Polling để đồng bộ activeIndex từ Iframe 3DVista
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      try {
+        const contentWindow = iframeRef.current?.contentWindow;
+        if (!contentWindow) return;
+
+        // Kiểm tra xem Iframe có cung cấp hàm lấy index hiện tại không
+        if (typeof contentWindow.getCurrentMediaIndex === 'function') {
+          const newIndex = contentWindow.getCurrentMediaIndex();
+          if (typeof newIndex === 'number' && newIndex !== activeIndex) {
+            setActiveIndex(newIndex);
+          }
+        } else if (contentWindow.tdvplayer?.getById?.('rootPlayer')) {
+          // Fallback: cố gắng lấy selectedIndex từ playlist chính của 3DVista
+          const rootPlayer = contentWindow.tdvplayer.getById('rootPlayer');
+          const mainPlayList = rootPlayer?.mainPlayList;
+          if (mainPlayList && typeof mainPlayList.get === 'function') {
+            const newIndex = mainPlayList.get('selectedIndex');
+            if (typeof newIndex === 'number' && newIndex !== activeIndex) {
+              setActiveIndex(newIndex);
+            }
+          }
+        }
+      } catch (error) {
+        // Bỏ qua lỗi nếu Iframe chưa load hoặc không có hàm này
+      }
+    }, 150);
+
+    return () => clearInterval(pollInterval);
+  }, [activeIndex]);
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-black font-sans">
@@ -170,9 +276,9 @@ export default function TourPage() {
                       <li key={loc.index} className="list-none">
                         <button
                           type="button"
-                          onClick={() => changePanorama(loc.index)}
+                          onClick={() => changePanorama(loc.subItems?.[0]?.index ?? loc.index)}
                           className={`w-full cursor-pointer rounded-r-lg border-l-4 px-4 py-2 text-left text-base transition-colors ${
-                            activeIndex === loc.index
+                            activeIndex === loc.index || loc.subItems?.some((subItem) => subItem.index === activeIndex)
                               ? 'border-blue-500 bg-blue-50 font-semibold text-blue-900'
                               : 'border-transparent font-normal text-slate-700 hover:bg-blue-50/50 hover:text-slate-900'
                           }`}
@@ -197,11 +303,53 @@ export default function TourPage() {
               </svg>
             </div>
             <div className="truncate text-sm font-medium">
-              {MENU_DATA.flatMap((g) => g.items).find((item) => item.index === activeIndex)?.label || "Khuôn viên trường"}
+              {allMenuItems
+                .flatMap((item) => (item.subItems ? item.subItems : item))
+                .find((item) => item.index === activeIndex)?.label || "Khuôn viên trường"}
             </div>
           </div>
         </div>
       </aside>
+
+      <div
+        className={`pointer-events-none absolute bottom-0 left-0 z-[60] h-24 w-full transition-all duration-200 md:h-28 ${
+          isSidebarOpen ? 'md:left-[360px] md:w-[calc(100%-360px)]' : ''
+        } ${isThumbnailOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}
+      >
+        <div className="pointer-events-auto flex h-full w-full items-stretch justify-center gap-2 overflow-hidden border-t-4 border-[#f26622] bg-[#1e294d] px-2 py-2 md:px-3">
+          {thumbnailItems.map((item) => {
+            const isActive = item.index === activeThumbnailIndex;
+
+            return (
+              <button
+                key={item.index}
+                type="button"
+                onClick={() => changePanorama(item.index)}
+                className={`group relative h-full w-48 flex-none overflow-hidden rounded-lg text-left transition-all duration-500 md:w-56 ${
+                  isActive
+                    ? 'border-2 border-[#f26622] opacity-100'
+                    : 'border border-transparent opacity-70 hover:opacity-90'
+                }`}
+              >
+                <>
+                  <img
+                    src={item.thumb}
+                    alt={item.label}
+                    className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-[1.02] ${
+                      isActive ? 'brightness-100' : 'brightness-50'
+                    }`}
+                  />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-3 py-2">
+                    <span className={`truncate text-sm font-semibold ${isActive ? 'text-white' : 'text-slate-200'}`}>
+                      {item.label}
+                    </span>
+                  </div>
+                </>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* KHUNG IFRAME 360 */}
       <div className="absolute left-0 top-0 z-0 h-screen w-full bg-slate-900">
