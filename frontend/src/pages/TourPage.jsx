@@ -243,6 +243,7 @@ export default function TourPage() {
   const [isStarted, setIsStarted] = useState(false);
   const [isWelcomeClosing, setIsWelcomeClosing] = useState(false);
   const [hotspotPreview, setHotspotPreview] = useState(null);
+  const [isMusicEnabled, setIsMusicEnabled] = useState(true);
   const allMenuItems = MENU_DATA.flatMap((group) => group.items);
   const activeLectureHall = MENU_DATA
     .find((group) => group.category === "HỆ THỐNG PHÒNG HỌC")
@@ -285,9 +286,29 @@ export default function TourPage() {
       const iframeWindow = iframeRef.current?.contentWindow;
       const audioElements = iframeWindow?.document?.querySelectorAll?.("audio");
       audioElements?.forEach((audio) => {
-        audio.muted = false;
+        audio.muted = !isMusicEnabled;
         const playPromise = audio.play?.();
         if (playPromise?.catch) playPromise.catch(() => {});
+      });
+    } catch {
+      // Bỏ qua nếu iframe chưa sẵn sàng hoặc không truy cập được.
+    }
+  };
+
+  const toggleMusic = () => {
+    const nextEnabled = !isMusicEnabled;
+    setIsMusicEnabled(nextEnabled);
+
+    try {
+      const iframeWindow = iframeRef.current?.contentWindow;
+      const audioElements = iframeWindow?.document?.querySelectorAll?.("audio");
+      audioElements?.forEach((audio) => {
+        audio.muted = !nextEnabled;
+
+        if (nextEnabled && audio.paused) {
+          const playPromise = audio.play?.();
+          if (playPromise?.catch) playPromise.catch(() => {});
+        }
       });
     } catch {
       // Bỏ qua nếu iframe chưa sẵn sàng hoặc không truy cập được.
@@ -526,17 +547,43 @@ export default function TourPage() {
 
         {/* Floating orange chevron button (like sample) */}
         <div className="absolute bottom-0 left-0 w-full">
-          <div className="flex h-12 items-center gap-3 border-t border-white/50 bg-white/80 px-4 text-slate-700 backdrop-blur-md">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1f365f]">
-              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5L6 9H3v6h3l5 4V5z" />
+          <div className="flex h-12 items-center justify-between gap-3 border-t border-white/50 bg-white/80 px-4 text-slate-700 backdrop-blur-md">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[15px] font-semibold leading-none text-slate-800">
+                {activeLocationLabel
+                  ? getLocalizedItemLabel(language, activeLocationLabel)
+                  : getLocalizedText(language, 'defaultLocation')}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleMusic}
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                isMusicEnabled
+                  ? 'bg-[#1f365f] text-white hover:bg-[#172947]'
+                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+              }`}
+              aria-pressed={isMusicEnabled}
+              aria-label={isMusicEnabled ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
+            >
+              <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                {isMusicEnabled ? (
+                  <>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5L6 9H3v6h3l5 4V5z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 9a4 4 0 010 6" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.5 6.5a8 8 0 010 11" />
+                  </>
+                ) : (
+                  <>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5L6 9H3v6h3l5 4V5z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 9l5 6" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 9l-5 6" />
+                  </>
+                )}
               </svg>
-            </div>
-            <div className="truncate text-sm font-medium">
-              {activeLocationLabel
-                ? getLocalizedItemLabel(language, activeLocationLabel)
-                : getLocalizedText(language, 'defaultLocation')}
-            </div>
+              <span>{isMusicEnabled ? 'Nhạc bật' : 'Nhạc tắt'}</span>
+            </button>
           </div>
         </div>
       </aside>
