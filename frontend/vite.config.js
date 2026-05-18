@@ -1,7 +1,18 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
-})
+  plugins: [
+    react(),
+    basicSsl() 
+  ],
+  server: {
+    host: true, // Mở cổng mạng LAN để điện thoại/kính VR kết nối vào được
+    port: 3000, 
+  },
+  preview: {
+    host: true,
+    port: 3000,
+  }
+});

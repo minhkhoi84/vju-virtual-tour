@@ -357,6 +357,7 @@ const PreviewTooltip = memo(function PreviewTooltip({ preview, position, languag
 
 export default function TourPage() {
   const iframeRef = useRef(null);
+  const vrContainerRef = useRef(null);
   const startTimeoutRef = useRef(null);
   const hotspotPreviewRef = useRef(null);
   const latestTooltipPositionRef = useRef({ x: 0, y: 0 });
@@ -372,6 +373,7 @@ export default function TourPage() {
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [isMusicEnabled, setIsMusicEnabled] = useState(true);
   const [isDescOpen, setIsDescOpen] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const allMenuItems = useMemo(() => MENU_DATA.flatMap((group) => group.items), []);
   const menuPreviewByIndex = useMemo(() => {
     const map = new Map();
@@ -571,7 +573,7 @@ export default function TourPage() {
       const iframeWindow = iframeRef.current?.contentWindow;
       const audioElements = iframeWindow?.document?.querySelectorAll?.("audio");
       audioElements?.forEach((audio) => {
-        audio.muted = !isMusicEnabled;
+        audio.muted = false;
         const playPromise = audio.play?.();
         if (playPromise?.catch) playPromise.catch(() => {});
       });
@@ -608,6 +610,41 @@ export default function TourPage() {
       setIsStarted(true);
     }, 550);
   };
+
+  const enterVrMode = () => {
+    const container = vrContainerRef.current;
+    if (!container) return;
+
+    if (container.requestFullscreen) {
+      container.requestFullscreen();
+      return;
+    }
+
+    container.webkitRequestFullscreen?.();
+  };
+
+  const exitVrMode = () => {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+      return;
+    }
+
+    document.webkitExitFullscreen?.();
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement || document.webkitFullscreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   // Polling để đồng bộ activeIndex từ Iframe 3DVista
   useEffect(() => {
@@ -713,7 +750,8 @@ export default function TourPage() {
     <div className="relative h-screen w-full overflow-hidden bg-black font-sans">
       <PreviewTooltip preview={hotspotPreview} position={tooltipPosition} language={language} />
 
-      <div className="absolute right-4 top-4 z-[70] flex flex-col items-end gap-3">
+      {!isFullscreen && (
+        <div className="absolute right-4 top-4 z-[70] flex flex-col items-end gap-3">
         <a
           href="https://vju.ac.vn/ttts2026/"
           target="_blank"
@@ -785,10 +823,11 @@ export default function TourPage() {
               )}
             </div>
           )}
-      </div>
+        </div>
+      )}
       
       {/* Nút Toggle mở menu */}
-      {!isSidebarOpen && (
+      {!isFullscreen && !isSidebarOpen && (
         <button 
           onClick={() => setIsSidebarOpen(true)}
           className="absolute left-4 top-4 z-[100] flex h-10 w-10 items-center justify-center rounded-full bg-[#f26622] text-white shadow-lg transition-transform hover:scale-105"
@@ -800,11 +839,12 @@ export default function TourPage() {
       )}
 
       {/* SIDEBAR */}
-      <aside
-        className={`absolute left-0 top-0 z-50 flex h-full w-[360px] flex-col transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+      {!isFullscreen && (
+        <aside
+          className={`absolute left-0 top-0 z-50 flex h-full w-[360px] flex-col transition-transform duration-300 ease-in-out ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
         <div className="flex h-[96px] shrink-0 items-center gap-3 border-b border-white/50 bg-white px-4">
           <button
             onClick={() => setIsSidebarOpen(false)}
@@ -919,13 +959,15 @@ export default function TourPage() {
             </button>
           </div>
         </div>
-      </aside>
+        </aside>
+      )}
 
-      <div
-        className={`pointer-events-none absolute bottom-0 left-0 z-[60] h-24 w-full transition-all duration-200 md:h-28 ${
-          isSidebarOpen ? 'md:left-[360px] md:w-[calc(100%-360px)]' : ''
-        } ${isThumbnailOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}
-      >
+      {!isFullscreen && (
+        <div
+          className={`pointer-events-none absolute bottom-0 left-0 z-[60] h-24 w-full transition-all duration-200 md:h-28 ${
+            isSidebarOpen ? 'md:left-[360px] md:w-[calc(100%-360px)]' : ''
+          } ${isThumbnailOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}
+        >
         <div className="pointer-events-auto flex h-full w-full items-stretch justify-center gap-2 overflow-hidden border-t-4 border-[#f26622] bg-[#1e294d] px-2 py-2 md:px-3">
           {thumbnailItems.map((item) => {
             const isActive = item.index === activeThumbnailIndex;
@@ -959,10 +1001,31 @@ export default function TourPage() {
             );
           })}
         </div>
-      </div>
+        </div>
+      )}
 
       {/* KHUNG IFRAME 360 */}
-      <div className="absolute left-0 top-0 z-0 h-screen w-full bg-slate-900">
+      <div ref={vrContainerRef} className="absolute left-0 top-0 z-0 h-screen w-full bg-slate-900">
+        {!isFullscreen && (
+          <button
+            type="button"
+            onClick={enterVrMode}
+            className="absolute bottom-20 right-4 z-[80] flex items-center gap-2 rounded-full bg-cyan-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg md:bottom-4"
+          >
+            Vào chế độ VR
+          </button>
+        )}
+
+        {isFullscreen && (
+          <button
+            type="button"
+            onClick={exitVrMode}
+            className="absolute right-4 top-4 z-[210] flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-2xl"
+          >
+            Thoát VR
+          </button>
+        )}
+
         <iframe 
           ref={iframeRef}
           src="/tour360/index.html" 
