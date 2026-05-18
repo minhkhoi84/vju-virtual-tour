@@ -101,6 +101,25 @@ const LANGUAGE_CONTENT = {
   },
 };
 
+const LOCATION_DESCRIPTIONS = {
+  VI: {
+    'Cổng trường':
+      'Cổng chính Trường Đại học Việt Nhật là điểm đón tiếp đầu tiên dành cho sinh viên, giảng viên và khách tham quan. Từ đây, bạn có thể bắt đầu hành trình khám phá khuôn viên xanh, hiện đại với kiến trúc hài hòa giữa phong cách Nhật Bản và Việt Nam.',
+    'Thư viện':
+      'Thư viện VJU cung cấp không gian học tập yên tĩnh, kho tài liệu phong phú và hệ thống tra cứu số hiện đại. Đây là nơi sinh viên nghiên cứu, đọc sách và làm việc nhóm trong môi trường chuyên nghiệp, hỗ trợ đầy đủ cho quá trình học tập.',
+    'Sân chào cờ':
+      'Sân chào cờ là không gian trang trọng nơi diễn ra các buổi lễ chào cờ, sự kiện chung của nhà trường. Khu vực rộng rãi, thoáng đãng, thường xuyên được sử dụng cho hoạt động ngoại khóa và các chương trình giao lưu văn hóa.',
+  },
+  EN: {
+    'Cổng trường':
+      'The main gate of Vietnam Japan University is the first welcome point for students, faculty, and visitors. From here, you can begin exploring a green, modern campus with architecture that blends Japanese and Vietnamese styles.',
+    'Thư viện':
+      'The VJU Library offers a quiet study environment, a rich collection of materials, and a modern digital catalog system. It is where students research, read, and work in groups within a professional setting that fully supports learning.',
+    'Sân chào cờ':
+      'The flag ceremony yard is a dignified space for flag-raising ceremonies and school-wide events. This spacious, open area is also used for extracurricular activities and cultural exchange programs.',
+  },
+};
+
 const getLocalizedText = (language, key) => LANGUAGE_CONTENT[language]?.[key] ?? LANGUAGE_CONTENT.VI[key] ?? key;
 
 const getLocalizedCategory = (language, category) =>
@@ -244,6 +263,7 @@ export default function TourPage() {
   const [isWelcomeClosing, setIsWelcomeClosing] = useState(false);
   const [hotspotPreview, setHotspotPreview] = useState(null);
   const [isMusicEnabled, setIsMusicEnabled] = useState(true);
+  const [isDescOpen, setIsDescOpen] = useState(true);
   const allMenuItems = MENU_DATA.flatMap((group) => group.items);
   const activeLectureHall = MENU_DATA
     .find((group) => group.category === "HỆ THỐNG PHÒNG HỌC")
@@ -387,6 +407,10 @@ export default function TourPage() {
     };
   }, []);
 
+  useEffect(() => {
+    setIsDescOpen(true);
+  }, [activeIndex, activeLocationLabel]);
+
   return (
     <div className="relative h-screen w-full overflow-hidden bg-black font-sans">
       <div
@@ -422,7 +446,7 @@ export default function TourPage() {
         </div>
       </div>
 
-      <div className="absolute right-4 top-4 z-[70] flex items-center gap-4">
+      <div className="absolute right-4 top-4 z-[70] flex flex-col items-end gap-3">
         <a
           href="https://vju.ac.vn/ttts2026/"
           target="_blank"
@@ -452,6 +476,48 @@ export default function TourPage() {
             EN
           </button>
         </div>
+
+        {isStarted &&
+          activeLocationLabel &&
+          LOCATION_DESCRIPTIONS[language]?.[activeLocationLabel] && (
+            <div className="relative flex w-full flex-col items-end">
+              <div className="group relative">
+                <button
+                  type="button"
+                  onClick={() => setIsDescOpen(!isDescOpen)}
+                  className="flex items-center justify-center rounded-md border border-white/10 bg-black/40 px-3 py-2 transition-colors hover:bg-white/3"
+                  aria-expanded={isDescOpen}
+                  aria-label={language === 'VI' ? 'Mở/đóng giới thiệu' : 'Toggle introduction'}
+                >
+                  <svg className="h-5 w-5 text-[#1e294d]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <rect x="3" y="3" width="14" height="18" rx="2" ry="2" strokeWidth="1.6" />
+                    <path d="M7 8h8M7 12h8M7 16h5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+
+                {/* Tooltip (speech-bubble) */}
+                <div className="pointer-events-none absolute right-0 top-full z-50 mt-2 flex items-center justify-center">
+                  <div className="relative flex flex-col items-end">
+                    <div className="invisible rounded-md bg-[#1e294d] px-3 py-1 text-xs text-white opacity-0 scale-95 transition-all duration-200 group-hover:visible group-hover:opacity-100 group-hover:scale-100">
+                      {language === 'VI' ? 'Giới thiệu' : 'Introduction'}
+                    </div>
+                    <div className="absolute right-2 top-0 -translate-y-1/2 w-3 h-3 rotate-45 bg-[#1e294d] opacity-0 transition-all duration-200 group-hover:opacity-100" />
+                  </div>
+                </div>
+              </div>
+
+              {isDescOpen && (
+                <div className="relative mt-2 w-[300px] rounded-xl border border-white/10 bg-[#1e294d]/80 p-5 text-white shadow-2xl backdrop-blur-md md:w-[360px]">
+                  <h3 className="mb-3 border-b border-white/10 pb-2 text-base font-bold text-cyan-300">
+                    {getLocalizedItemLabel(language, activeLocationLabel)}
+                  </h3>
+                  <p className="text-justify whitespace-pre-line overflow-y-auto max-h-[60vh] pr-1 text-sm leading-relaxed text-white/90">
+                    {LOCATION_DESCRIPTIONS[language][activeLocationLabel]}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
       </div>
       
       {/* Nút Toggle mở menu */}
