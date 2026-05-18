@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 const LANGUAGE_CONTENT = {
   VI: {
@@ -128,6 +128,46 @@ const getLocalizedCategory = (language, category) =>
 const getLocalizedItemLabel = (language, label) =>
   LANGUAGE_CONTENT[language]?.items?.[label] ?? label;
 
+const PREVIEW_TOOLTIP_SIZE = {
+  width: 320,
+  height: 230,
+  gap: 18,
+  margin: 16,
+};
+
+const parseTourHotspotPreviewMap = (scriptText) => {
+  const map = new Map();
+  const overlayRegex = /"areas"\s*:\s*\[[\s\S]*?"click"\s*:\s*"([^"]+)"[\s\S]*?"id"\s*:\s*"(overlay_[^"]+)"/g;
+  let match;
+
+  while ((match = overlayRegex.exec(scriptText)) !== null) {
+    const [, clickScript, overlayId] = match;
+    const selectedIndex = clickScript.match(/selectedIndex[^0-9]+(\d+)/)?.[1];
+    const mediaId = clickScript.match(/this\.(panorama_[A-Z0-9_]+)/)?.[1];
+
+    map.set(overlayId, {
+      index: selectedIndex !== undefined ? Number(selectedIndex) : undefined,
+      mediaId,
+    });
+  }
+
+  return map;
+};
+
+const getTourImageUrl = (thumbnailUrl, mediaId) => {
+  if (typeof thumbnailUrl === 'string' && thumbnailUrl.trim()) {
+    const cleanUrl = thumbnailUrl.trim();
+
+    if (/^(https?:)?\/\//.test(cleanUrl) || cleanUrl.startsWith('/')) {
+      return cleanUrl;
+    }
+
+    return `/tour360/${cleanUrl.replace(/^\.?\//, '')}`;
+  }
+
+  return mediaId ? `/tour360/media/${mediaId}_t.jpg` : undefined;
+};
+
 const MENU_DATA = [
   {
     category: "KHUÔN VIÊN TRƯỜNG",
@@ -253,18 +293,102 @@ const GROUP_ICONS = {
   ),
 };
 
+const PreviewTooltip = memo(function PreviewTooltip({ preview, position, language }) {
+  const image = preview?.previewImage || preview?.image || preview?.thumb || preview?.src;
+  const fallbackImage = preview?.fallbackImage;
+  const title = preview?.title || preview?.name || preview?.label || getLocalizedText(language, 'hotspotPreviewTitle');
+  const clampedX = Math.min(
+    position.x + PREVIEW_TOOLTIP_SIZE.gap,
+    window.innerWidth - PREVIEW_TOOLTIP_SIZE.width - PREVIEW_TOOLTIP_SIZE.margin
+  );
+  const clampedY = Math.min(
+    position.y + PREVIEW_TOOLTIP_SIZE.gap,
+    window.innerHeight - PREVIEW_TOOLTIP_SIZE.height - PREVIEW_TOOLTIP_SIZE.margin
+  );
+
+  return (
+    <div
+      className={`fixed z-[9999] w-[320px] pointer-events-none transition-all duration-200 ease-out ${
+        preview ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-2 opacity-0 scale-95'
+      }`}
+      style={{
+        left: Math.max(PREVIEW_TOOLTIP_SIZE.margin, clampedX),
+        top: Math.max(PREVIEW_TOOLTIP_SIZE.margin, clampedY),
+      }}
+      aria-hidden={!preview}
+    >
+      <div className="overflow-hidden rounded-2xl border border-white/15 bg-slate-950/90 shadow-[0_22px_70px_rgba(0,0,0,0.45)] ring-1 ring-cyan-200/10 backdrop-blur-xl">
+        <div className="relative h-[170px] w-full bg-slate-800">
+          {image ? (
+            <img
+              src={image}
+              alt={title}
+              className="h-full w-full object-cover"
+              draggable="false"
+              onError={(event) => {
+                if (fallbackImage && event.currentTarget.src !== new URL(fallbackImage, window.location.origin).href) {
+                  event.currentTarget.src = fallbackImage;
+                }
+              }}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-800 to-slate-950 px-4 text-center text-sm text-white/60">
+              {getLocalizedText(language, 'loadingPreview')}
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
+          <div className="absolute left-3 top-3 rounded-full bg-cyan-400/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-950 shadow-lg">
+            Preview
+          </div>
+        </div>
+
+        <div className="bg-slate-950/90 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300/90">
+            {getLocalizedText(language, 'hotspotPreviewTitle')}
+          </p>
+          <h3 className="mt-1 line-clamp-2 text-base font-semibold leading-snug text-white">
+            {getLocalizedItemLabel(language, title)}
+          </h3>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export default function TourPage() {
   const iframeRef = useRef(null);
   const startTimeoutRef = useRef(null);
+  const hotspotPreviewRef = useRef(null);
+  const latestTooltipPositionRef = useRef({ x: 0, y: 0 });
+  const overlayPreviewMapRef = useRef(new Map());
+  const attachedIframeWindowRef = useRef(null);
+  const hotspotPreviewCleanupRef = useRef(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [language, setLanguage] = useState("VI");
   const [isStarted, setIsStarted] = useState(false);
   const [isWelcomeClosing, setIsWelcomeClosing] = useState(false);
   const [hotspotPreview, setHotspotPreview] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [isMusicEnabled, setIsMusicEnabled] = useState(true);
   const [isDescOpen, setIsDescOpen] = useState(true);
-  const allMenuItems = MENU_DATA.flatMap((group) => group.items);
+  const allMenuItems = useMemo(() => MENU_DATA.flatMap((group) => group.items), []);
+  const menuPreviewByIndex = useMemo(() => {
+    const map = new Map();
+
+    allMenuItems.forEach((item) => {
+      const items = item.subItems?.length ? item.subItems : [item];
+      items.forEach((scene) => {
+        map.set(scene.index, {
+          id: scene.index,
+          title: scene.label,
+          previewImage: scene.previewImage || scene.thumb,
+        });
+      });
+    });
+
+    return map;
+  }, [allMenuItems]);
   const activeLectureHall = MENU_DATA
     .find((group) => group.category === "HỆ THỐNG PHÒNG HỌC")
     ?.items.find(
@@ -292,6 +416,147 @@ export default function TourPage() {
       iframeRef.current.contentWindow.setMediaByIndex(index);
     }
     setActiveIndex(index);
+    setIsDescOpen(true);
+  };
+
+  const updateTooltipPosition = (event, commitState = true) => {
+    const iframeRect = iframeRef.current?.getBoundingClientRect();
+    const sourceEvent = event?.originalEvent || event?.data?.originalEvent || event?.data?.event || event;
+    const hasCoordinates = typeof sourceEvent?.clientX === 'number' && typeof sourceEvent?.clientY === 'number';
+    const x = hasCoordinates
+      ? iframeRect
+        ? iframeRect.left + sourceEvent.clientX
+        : sourceEvent.clientX
+      : latestTooltipPositionRef.current.x;
+    const y = hasCoordinates
+      ? iframeRect
+        ? iframeRect.top + sourceEvent.clientY
+        : sourceEvent.clientY
+      : latestTooltipPositionRef.current.y;
+
+    latestTooltipPositionRef.current = { x, y };
+
+    if (commitState) {
+      setTooltipPosition((prev) => {
+        if (Math.abs(prev.x - x) < 2 && Math.abs(prev.y - y) < 2) return prev;
+        return { x, y };
+      });
+    }
+  };
+
+  const attachHotspotPreviewHandlers = () => {
+    const iframeWindow = iframeRef.current?.contentWindow;
+    const iframeDocument = iframeWindow?.document;
+    const rootPlayer = iframeWindow?.tdvplayer?.getById?.('rootPlayer');
+
+    if (!iframeWindow || !iframeDocument || !rootPlayer?.getOverlays || attachedIframeWindowRef.current === iframeWindow) {
+      return false;
+    }
+
+    hotspotPreviewCleanupRef.current?.();
+
+    const getScenePreview = (index, mediaId) => {
+      const items = rootPlayer.mainPlayList?.get?.('items') ?? [];
+      const itemIndex = typeof index === 'number'
+        ? index
+        : items.findIndex((playListItem) => playListItem?.get?.('media')?.get?.('id') === mediaId);
+      const item = itemIndex >= 0 ? items[itemIndex] : undefined;
+      const media = item?.get?.('media');
+      const mediaThumb = media?.get?.('thumbnailUrl');
+      const mediaLabel = media?.get?.('label');
+      const resolvedMediaId = mediaId || media?.get?.('id');
+      const menuPreview = menuPreviewByIndex.get(itemIndex);
+      const fallbackImage = resolvedMediaId ? `/tour360/media/${resolvedMediaId}_t.jpg` : undefined;
+
+      return {
+        id: itemIndex >= 0 ? itemIndex : mediaId ?? mediaLabel,
+        title: menuPreview?.title || mediaLabel || getLocalizedText(language, 'hotspotPreviewTitle'),
+        previewImage: menuPreview?.previewImage || getTourImageUrl(mediaThumb, resolvedMediaId),
+        fallbackImage,
+      };
+    };
+
+    const getAreaClickScript = (area) => {
+      if (!area?.get) return '';
+      const clickAction = area.get('click') || area.get('action') || area.get('onClick') || '';
+      return typeof clickAction === 'string' ? clickAction : String(clickAction);
+    };
+
+    const getPreviewFromArea = (area, overlay) => {
+      const overlayPreview = overlayPreviewMapRef.current.get(overlay?.get?.('id'));
+      const clickScript = getAreaClickScript(area);
+      const selectedIndex = clickScript.match(/selectedIndex[^0-9]+(\d+)/)?.[1];
+      const mediaId = clickScript.match(/this\.(panorama_[A-Z0-9_]+)/)?.[1];
+
+      return getScenePreview(
+        overlayPreview?.index ?? (selectedIndex !== undefined ? Number(selectedIndex) : undefined),
+        overlayPreview?.mediaId ?? mediaId
+      );
+    };
+
+    const showPreview = (preview, event) => {
+      hotspotPreviewRef.current = preview;
+      setHotspotPreview(preview);
+      updateTooltipPosition(event);
+    };
+
+    const hidePreview = () => {
+      hotspotPreviewRef.current = null;
+      setHotspotPreview(null);
+    };
+
+    const movePreview = (event) => {
+      updateTooltipPosition(event, Boolean(hotspotPreviewRef.current));
+    };
+
+    const bindings = [];
+    const bindArea = (area, eventName, handler) => {
+      if (!area?.bind) return;
+      area.bind(eventName, handler, rootPlayer);
+      bindings.push({ area, eventName, handler });
+    };
+
+    const mediaList = [
+      ...(rootPlayer.getByClassName('Panorama') ?? []),
+      ...(rootPlayer.getByClassName('Video360') ?? []),
+      ...(rootPlayer.getByClassName('Map') ?? []),
+    ];
+
+    mediaList.forEach((media) => {
+      (rootPlayer.getOverlays(media) ?? []).forEach((overlay) => {
+        if (!['HotspotPanoramaOverlay', 'HotspotMapOverlay'].includes(overlay.get?.('class'))) return;
+
+        overlay.get?.('areas')?.forEach((area) => {
+          const handleEnter = (event) => showPreview(getPreviewFromArea(area, overlay), event);
+
+          ['mouseover', 'mouseenter', 'rollOver', 'over'].forEach((eventName) =>
+            bindArea(area, eventName, handleEnter)
+          );
+          ['mousemove', 'mouseMove'].forEach((eventName) => bindArea(area, eventName, movePreview));
+          ['mouseout', 'mouseleave', 'rollOut', 'out'].forEach((eventName) =>
+            bindArea(area, eventName, hidePreview)
+          );
+        });
+      });
+    });
+
+    iframeDocument.addEventListener('mousemove', movePreview, true);
+    iframeDocument.addEventListener('mouseleave', hidePreview, true);
+
+    attachedIframeWindowRef.current = iframeWindow;
+    hotspotPreviewCleanupRef.current = () => {
+      bindings.forEach(({ area, eventName, handler }) => {
+        area.unbind?.(eventName, handler, rootPlayer);
+      });
+      iframeDocument.removeEventListener('mousemove', movePreview, true);
+      iframeDocument.removeEventListener('mouseleave', hidePreview, true);
+      if (attachedIframeWindowRef.current === iframeWindow) {
+        attachedIframeWindowRef.current = null;
+      }
+      hotspotPreviewCleanupRef.current = null;
+    };
+
+    return true;
   };
 
   const toggleGroup = (category) => {
@@ -356,6 +621,7 @@ export default function TourPage() {
           const newIndex = contentWindow.getCurrentMediaIndex();
           if (typeof newIndex === 'number' && newIndex !== activeIndex) {
             setActiveIndex(newIndex);
+            setIsDescOpen(true);
           }
         } else if (contentWindow.tdvplayer?.getById?.('rootPlayer')) {
           // Fallback: cố gắng lấy selectedIndex từ playlist chính của 3DVista
@@ -365,6 +631,7 @@ export default function TourPage() {
             const newIndex = mainPlayList.get('selectedIndex');
             if (typeof newIndex === 'number' && newIndex !== activeIndex) {
               setActiveIndex(newIndex);
+              setIsDescOpen(true);
             }
           }
         }
@@ -400,6 +667,41 @@ export default function TourPage() {
   }, []);
 
   useEffect(() => {
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts += 1;
+      if (attachHotspotPreviewHandlers() || attempts > 40) {
+        clearInterval(interval);
+      }
+    }, 500);
+
+    return () => {
+      clearInterval(interval);
+      hotspotPreviewCleanupRef.current?.();
+    };
+    // The iframe bridge intentionally reads the iframe/player objects outside React.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetch('/tour360/script.js')
+      .then((response) => (response.ok ? response.text() : ''))
+      .then((scriptText) => {
+        if (!isMounted || !scriptText) return;
+        overlayPreviewMapRef.current = parseTourHotspotPreviewMap(scriptText);
+      })
+      .catch(() => {
+        // Preview still falls back to runtime hotspot data if script.js cannot be read.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (startTimeoutRef.current) {
         clearTimeout(startTimeoutRef.current);
@@ -407,44 +709,9 @@ export default function TourPage() {
     };
   }, []);
 
-  useEffect(() => {
-    setIsDescOpen(true);
-  }, [activeIndex, activeLocationLabel]);
-
   return (
     <div className="relative h-screen w-full overflow-hidden bg-black font-sans">
-      <div
-        className={`fixed bottom-6 right-6 z-[140] w-[min(90vw,22rem)] transition-all duration-300 ease-out ${
-          hotspotPreview ? 'pointer-events-auto translate-y-0 opacity-100 scale-100' : 'pointer-events-none translate-y-4 opacity-0 scale-95'
-        }`}
-        aria-live="polite"
-      >
-        <div className="overflow-hidden rounded-2xl border border-white/15 bg-slate-950/90 shadow-[0_20px_60px_rgba(15,23,42,0.45)] backdrop-blur-xl">
-          <div className="relative aspect-[16/9] w-full bg-slate-800">
-            {hotspotPreview?.image || hotspotPreview?.thumb || hotspotPreview?.src ? (
-              <img
-                src={hotspotPreview.image || hotspotPreview.thumb || hotspotPreview.src}
-                alt={hotspotPreview.title || hotspotPreview.name || hotspotPreview.label || getLocalizedText(language, 'hotspotPreviewTitle')}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 px-4 text-center text-sm text-white/60">
-                {getLocalizedText(language, 'loadingPreview')}
-              </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-          </div>
-
-          <div className="space-y-1 px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-300/90">
-              {getLocalizedText(language, 'hotspotPreviewTitle')}
-            </p>
-            <h3 className="line-clamp-2 text-base font-semibold text-white">
-              {hotspotPreview?.title || hotspotPreview?.name || hotspotPreview?.label || getLocalizedText(language, 'hotspotPreviewTitle')}
-            </h3>
-          </div>
-        </div>
-      </div>
+      <PreviewTooltip preview={hotspotPreview} position={tooltipPosition} language={language} />
 
       <div className="absolute right-4 top-4 z-[70] flex flex-col items-end gap-3">
         <a
@@ -702,6 +969,7 @@ export default function TourPage() {
           className="h-full w-full border-none"
           allowFullScreen 
           allow="xr-spatial-tracking; gyroscope; accelerometer"
+          onLoad={attachHotspotPreviewHandlers}
         ></iframe>
       </div>
 
