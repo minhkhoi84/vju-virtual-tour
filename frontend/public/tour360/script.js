@@ -4065,6 +4065,7 @@
  "viewerArea": "this.MainViewer",
  "touchControlMode": "drag_rotation",
  "displayPlaybackBar": true,
+ "gyroscopeEnabled": true,
  "gyroscopeVerticalDraggingEnabled": true
 },
 {

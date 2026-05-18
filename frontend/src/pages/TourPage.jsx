@@ -1031,7 +1031,7 @@ export default function TourPage() {
           src="/tour360/index.html" 
           className="h-full w-full border-none"
           allowFullScreen 
-          allow="xr-spatial-tracking; gyroscope; accelerometer"
+          allow="fullscreen; gyroscope; accelerometer; xr-spatial-tracking"
           onLoad={attachHotspotPreviewHandlers}
         ></iframe>
       </div>
