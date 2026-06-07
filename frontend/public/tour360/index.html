@@ -229,10 +229,24 @@
             }
         }
 
+        function requestDeviceOrientationPermissionIfNeeded(callback){
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+                // iOS 13+ requires explicit permission from a user gesture
+                DeviceOrientationEvent.requestPermission().then(function(response){
+                    // response can be 'granted' or 'denied' — proceed either way
+                    try{ if(callback) callback(); } catch(e){}
+                }).catch(function(){
+                    if(callback) callback();
+                });
+            } else {
+                if(callback) callback();
+            }
+        }
+
         function onBodyClick(){
             document.body.removeEventListener("click", onBodyClick);
             document.body.removeEventListener("touchend", onBodyClick);
-            loadTour();
+            requestDeviceOrientationPermissionIfNeeded(loadTour);
         }
 
         function onLoad() {
