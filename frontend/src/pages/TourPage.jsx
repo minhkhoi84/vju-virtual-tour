@@ -654,7 +654,7 @@ export default function TourPage() {
   };
 
   const openMyDinhTour = () => {
-    window.open('https://vju-tour.vercel.app/', '_blank', 'noopener,noreferrer');
+    window.location.href = 'https://vju-tour.vercel.app/';
   };
 
   const enterVrMode = () => {
