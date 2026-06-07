@@ -653,6 +653,10 @@ export default function TourPage() {
     }, 550);
   };
 
+  const openMyDinhTour = () => {
+    window.open('https://vju-tour.vercel.app/', '_blank', 'noopener,noreferrer');
+  };
+
   const enterVrMode = () => {
     const container = vrContainerRef.current;
     if (!container) return;
@@ -1103,20 +1107,33 @@ export default function TourPage() {
               TRƯỜNG ĐẠI HỌC VIỆT NHẬT
             </p>
 
-            <button
-              type="button"
-              onClick={handleStartTour}
-              className="group relative mt-10 flex h-28 w-28 items-center justify-center rounded-full border-2 border-cyan-300/80 bg-cyan-500/20 text-cyan-200 shadow-[0_0_30px_rgba(34,211,238,0.35)] backdrop-blur-sm transition-transform duration-300 hover:scale-105 hover:bg-cyan-400/25 md:h-32 md:w-32"
-            >
-              <span className="absolute inset-0 rounded-full border border-cyan-300/60 animate-ping"></span>
-              <span className="absolute -inset-3 rounded-full border border-cyan-400/40"></span>
-              <span className="relative text-sm font-bold tracking-wider text-white md:text-base">
-                  {getLocalizedText(language, 'startTour')}
-              </span>
-            </button>
+            <div className="mt-10 flex w-full flex-col items-stretch justify-center gap-4 sm:max-w-xl sm:flex-row">
+              <button
+                type="button"
+                onClick={handleStartTour}
+                className="group relative flex h-28 flex-1 items-center justify-center rounded-3xl border-2 border-cyan-300/80 bg-cyan-500/20 text-cyan-200 shadow-[0_0_30px_rgba(34,211,238,0.35)] backdrop-blur-sm transition-transform duration-300 hover:scale-[1.02] hover:bg-cyan-400/25 md:h-32"
+              >
+                <span className="absolute inset-0 rounded-3xl border border-cyan-300/60 animate-ping"></span>
+                <span className="absolute -inset-3 rounded-[28px] border border-cyan-400/40"></span>
+                <span className="relative text-sm font-bold tracking-wider text-white md:text-base">
+                  Hòa Lạc
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={openMyDinhTour}
+                className="group relative flex h-28 flex-1 items-center justify-center rounded-3xl border-2 border-white/70 bg-white/15 text-white shadow-[0_0_30px_rgba(15,23,42,0.22)] backdrop-blur-sm transition-transform duration-300 hover:scale-[1.02] hover:bg-white/20 md:h-32"
+              >
+                <span className="absolute inset-0 rounded-3xl border border-white/40"></span>
+                <span className="relative text-sm font-bold tracking-wider md:text-base">
+                  Mỹ Đình
+                </span>
+              </button>
+            </div>
 
             <p className="mt-6 text-xs text-white/80 md:text-sm">
-                {getLocalizedText(language, 'startTourHint')}
+              Chọn một khu để bắt đầu tham quan.
             </p>
           </div>
         </div>
