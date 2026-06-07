@@ -372,6 +372,7 @@ export default function TourPage() {
   const [hotspotPreview, setHotspotPreview] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [isMusicEnabled, setIsMusicEnabled] = useState(true);
+  const backgroundAudioRef = useRef(null);
   const [isDescOpen, setIsDescOpen] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const allMenuItems = useMemo(() => MENU_DATA.flatMap((group) => group.items), []);
@@ -577,6 +578,25 @@ export default function TourPage() {
         const playPromise = audio.play?.();
         if (playPromise?.catch) playPromise.catch(() => {});
       });
+      // Also ensure background audio in parent is played if available
+      try {
+        if (!backgroundAudioRef.current) {
+          const bgNew = new Audio('/audio/mondamusic-lofi-lofi-music-lofi-chill-529558.mp3');
+          bgNew.loop = true;
+          bgNew.preload = 'auto';
+          bgNew.volume = 0.7;
+          bgNew.muted = !isMusicEnabled;
+          backgroundAudioRef.current = bgNew;
+        }
+
+        const bg = backgroundAudioRef.current;
+        if (bg && isMusicEnabled) {
+          const p = bg.play?.();
+          if (p?.catch) p.catch((err) => console.warn('background audio play failed', err));
+        }
+      } catch (e) {
+        // ignore
+      }
     } catch {
       // Bỏ qua nếu iframe chưa sẵn sàng hoặc không truy cập được.
     }
@@ -594,9 +614,31 @@ export default function TourPage() {
 
         if (nextEnabled && audio.paused) {
           const playPromise = audio.play?.();
-          if (playPromise?.catch) playPromise.catch(() => {});
+          if (playPromise?.catch) playPromise.catch((err) => console.warn('iframe audio play failed', err));
+        } else if (!nextEnabled && !audio.paused) {
+          try { audio.pause(); } catch (e) {}
         }
       });
+
+      // Control background audio element in parent document
+      if (!backgroundAudioRef.current) {
+        const bg = new Audio('/audio/mondamusic-lofi-lofi-music-lofi-chill-529558.mp3');
+        bg.loop = true;
+        bg.preload = 'auto';
+        bg.volume = 0.7;
+        backgroundAudioRef.current = bg;
+      }
+
+      const bg = backgroundAudioRef.current;
+      if (bg) {
+        bg.muted = !nextEnabled;
+        if (nextEnabled) {
+          const p = bg.play?.();
+          if (p?.catch) p.catch((err) => console.warn('background audio play failed', err));
+        } else {
+          try { bg.pause(); } catch (e) {}
+        }
+      }
     } catch {
       // Bỏ qua nếu iframe chưa sẵn sàng hoặc không truy cập được.
     }
