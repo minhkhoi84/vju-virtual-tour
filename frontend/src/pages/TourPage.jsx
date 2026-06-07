@@ -661,12 +661,24 @@ export default function TourPage() {
     const container = vrContainerRef.current;
     if (!container) return;
 
-    if (container.requestFullscreen) {
-      container.requestFullscreen();
-      return;
+    // Prefer requesting fullscreen on the iframe itself so sensors are enabled
+    // inside the framed document on browsers like Chrome for Android.
+    const iframeEl = iframeRef.current;
+    try {
+      if (iframeEl && typeof iframeEl.requestFullscreen === 'function') {
+        iframeEl.requestFullscreen();
+        return;
+      }
+      // Fallback to container fullscreen if iframe fullscreen isn't available
+      if (container.requestFullscreen) {
+        container.requestFullscreen();
+        return;
+      }
+      container.webkitRequestFullscreen?.();
+    } catch (e) {
+      // If anything fails, fallback to container fullscreen
+      try { container.requestFullscreen?.(); } catch (err) {}
     }
-
-    container.webkitRequestFullscreen?.();
   };
 
   const exitVrMode = () => {
@@ -1077,7 +1089,7 @@ export default function TourPage() {
           src="/tour360/index.html" 
           className="h-full w-full border-none"
           allowFullScreen 
-          allow="fullscreen; gyroscope; accelerometer; xr-spatial-tracking"
+          allow="fullscreen; gyroscope; accelerometer; magnetometer; xr-spatial-tracking"
           onLoad={attachHotspotPreviewHandlers}
         ></iframe>
       </div>
